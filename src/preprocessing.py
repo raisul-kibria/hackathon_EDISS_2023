@@ -58,7 +58,7 @@ def joiner(imageA, posA):
 
 
 def get_sorted_images(path):
-    """ Get timestamps from images in a directory
+    """Get sorted images by timestamp
 
     Args:
         path (str): path to images directory (image name example: aemet_ba_202201010000.gif)
