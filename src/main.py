@@ -6,6 +6,8 @@ import os
 from PIL import Image
 import math
 import sys
+import netCDF4 as nc
+import datetime
 
 data_dir = "../data"
 out_dir = "../out"
@@ -83,6 +85,35 @@ def process_contours(out_cnt, contours):
         if aspect_ratio < 0.45 or (aspect_ratio < 0.4 and c1_score < 5):
             cv2.drawContours(out_cnt,[box],-1,0,-1)
     return out_cnt
+
+def export_to_netCDF(image, timestamp, outname):
+    ncfile = nc.Dataset(outname + ".nc", 'w', format='NETCDF4')
+
+    # Create dimensions for the data
+    ncfile.createDimension('time', 1)
+    ncfile.createDimension('x', image.shape[0])
+    ncfile.createDimension('y', image.shape[1])
+    ncfile.createDimension('z', image.shape[2])
+    # Create a variable for the image data
+    data = ncfile.createVariable('data', np.float32, ('time', 'x', 'y', 'z'))
+
+    # Set the variable attributes
+    data.units = 'dBm'
+    data.long_name = 'Radar Reading'
+    data.coordinates = 'time x y z'
+
+    # Add the data to the netCDF file
+    data[0, :, :, :] = image
+
+    # Create a variable for the timestamp
+    time = ncfile.createVariable('time', np.str, ('time',))
+
+    # Add the timestamp to the netCDF file
+    time[0] = timestamp
+
+    # Close the netCDF file
+    ncfile.close()
+
 if __name__=="__main__":
     # main loop
     for dir in os.listdir(data_dir):
@@ -91,7 +122,10 @@ if __name__=="__main__":
             clean_city = get_clean_map(dir)
             for date in os.listdir(full_dir):
                 full_subdir = os.path.join(full_dir, date)
-                os.mkdir(os.path.join(out_dir, dir, date))
+                try:
+                    os.mkdir(os.path.join(out_dir, dir, date))
+                except:
+                    pass
                 img_seq = []
                 for i in range(len(os.listdir(full_subdir)) - batch_size - 1):
                     input_batch = [os.path.join(full_subdir, x) for x in os.listdir(full_subdir)[i:i+batch_size]]
@@ -101,6 +135,11 @@ if __name__=="__main__":
                     img_ave_mask = get_foreground_mask(clean_city, img_ave, threshold = 40)
 
                     input_img = os.path.join(full_subdir, os.listdir(full_subdir)[i+batch_size+1])
+                    date_time = input_img.split("_")[-1].split(".")[0]
+
+                    # convert date_time to timestamp
+                    timestamp = str(datetime.datetime.strptime(date_time, "%Y%m%d%H%M"))
+
                     last_img = np.array(Image.open(input_img).convert("RGB"))
                     last_img_mask = get_foreground_mask(clean_city, last_img, threshold = 40)
 
@@ -114,7 +153,8 @@ if __name__=="__main__":
                     out_cnt[last_img_mask == 255] = 255
                     out_cnt = process_contours(out_cnt, contours)
                     out = dataset_creator(clean_city, out_cnt, last_img)
-                    cv2.imwrite(os.path.join(out_dir, dir, date, str(os.listdir(full_subdir)[i+batch_size+1])+".png"), cv2.cvtColor(out, cv2.COLOR_BGR2RGB))
+                    # cv2.imwrite(os.path.join(out_dir, dir, date, str(os.listdir(full_subdir)[i+batch_size+1])+".png"), cv2.cvtColor(out, cv2.COLOR_BGR2RGB))
+                    export_to_netCDF(out, timestamp, os.path.join(out_dir, dir, date, str(os.listdir(full_subdir)[i+batch_size+1])))
                     if SHOW:
                         cv2.imshow("Ouptut", cv2.cvtColor(out, cv2.COLOR_BGR2RGB))
                         cv2.imshow("Input", cv2.cvtColor(last_img, cv2.COLOR_BGR2RGB))
