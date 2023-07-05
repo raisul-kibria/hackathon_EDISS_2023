@@ -4,13 +4,13 @@ Code structure:
  - Implemented approach (Computer vision):
      #### preprocessing.py: Temporal median filter with probabilitsic sampling to create clean city maps
      [Extracted clean city maps can be found in data/gt folder]
-     
+
      #### main.py: Includes all the supporting code to create a temporal redundacny and constraint based interference removal approach.
      [The data folder will have the provided datasets as - data/pa data/ba data/va]
-     
+
      To visualize output at each step: `python main.py 1`
-     
-     
+
+
      *The output folder also needs to be formatted in the root as root/out/pa root/out/va root/out/ba. All processed outputs are saved as .png in the out folder.*
  - Future Work (automated approach): 
      #### dataset_creator.py: Augments the only cloud images manually collected with manually sourced interference masks; as a result training dataset for segmentation models can be created.
